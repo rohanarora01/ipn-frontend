@@ -20,9 +20,15 @@ jobs:
       - name: Backup original files
         run: |
           mkdir -p public/docs/original
+          
+          # Get list of changed .md files
           git diff --name-only HEAD~1 HEAD | grep '^public/docs/.*\.md$' | while read file; do
-            if git show HEAD~1:"$file" > /dev/null 2>&1; then
-              cp "$file" "public/docs/original/$(basename $file)"
+            # Check if file existed in previous commit
+            if git cat-file -e HEAD~1:"$file" 2>/dev/null; then
+              filename=$(basename "$file")
+              # Save the ORIGINAL version (from HEAD~1, before edits)
+              git show HEAD~1:"$file" > "public/docs/original/$filename"
+              echo "Backed up original: $filename"
             fi
           done
       
@@ -31,4 +37,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add public/docs/original/
-          git diff --cached --quiet || (git commit -m "Backup original docs [skip ci]" && git push)
+          if ! git diff --cached --quiet; then
+            git commit -m "Backup original docs [skip ci]"
+            git push
+          fi
