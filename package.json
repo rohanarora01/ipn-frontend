@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "generate-docs": "node scripts/generateDocsData.js",
+    "ci-update-docs": "python scripts/ci_update_docs.py",
+    "ci-update-docs:check": "python scripts/ci_update_docs.py --check",
+    "ci-update-docs:all": "python scripts/ci_update_docs.py --all",
     "dev": "npm run generate-docs && vite",
     "build": "npm run generate-docs && vite build"
   },
