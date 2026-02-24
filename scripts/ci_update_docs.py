@@ -105,27 +105,48 @@ def parse_summary():
     content = get_file_content(SUMMARY_FILE)
     files = []
     current_section = None
-    current_subsection = None
+    subsection_stack = []  # Track nested subsections
     
     for line_num, line in enumerate(content.split('\n'), 1):
         line = line.rstrip()
         if not line:
             continue
+        
+        # Skip the main title
+        if line.startswith('# ') and 'Documentation' in line:
+            continue
             
         # Section header (## Section)
         if line.startswith('## '):
             current_section = line.replace('## ', '').strip()
-            current_subsection = None
+            subsection_stack = []
+            print(f"  📁 Section: {current_section}")
             continue
         
-        # Subsection (**Name**)
-        if line.startswith('**') and line.endswith('**'):
-            current_subsection = line.replace('**', '').strip()
+        # Strip leading bullet and spaces for nested items
+        # Handle: "- **Name**", "  - **Name**", "    - [Name](file.md)"
+        stripped = line.lstrip()
+        indent_level = len(line) - len(stripped)
+        
+        # Remove leading "- " if present
+        if stripped.startswith('- '):
+            stripped = stripped[2:]
+        
+        # Subsection (**Name**) - after stripping "- "
+        if stripped.startswith('**') and stripped.endswith('**'):
+            subsection_name = stripped.replace('**', '').strip()
+            # Adjust stack based on indentation
+            level = indent_level // 2  # Approximate nesting level
+            while len(subsection_stack) >= level:
+                subsection_stack.pop() if subsection_stack else None
+            subsection_stack.append(subsection_name)
+            current_subsection = ' > '.join(subsection_stack)
+            print(f"    📂 Subsection: {current_subsection}")
             continue
         
         # File link [Name](file.md)
-        if '[' in line and '](' in line:
-            display_name, md_file = parse_markdown_link(line)
+        if '[' in stripped and '](' in stripped:
+            display_name, md_file = parse_markdown_link(stripped)
             if display_name and md_file:
                 # Extract original filename from md filename
                 # e.g., _docker_Dockerfile.md -> Dockerfile
@@ -139,6 +160,10 @@ def parse_summary():
                     category = 'frontend'
                 else:
                     category = 'other'
+                
+                # Show file found
+                file_path = f"public/docs/{md_file}"
+                print(f"      📄 Found: {display_name} → {file_path}")
                 
                 files.append({
                     'id': len(files),
@@ -307,8 +332,9 @@ Examples:
     
     files = parse_summary()
     if not files:
-        print("⚠️ No files found in SUMMARY.md")
-        return 1
+        print("⚠️ Warning: No files found in SUMMARY.md")
+        print("   Creating empty documentation structure...")
+        files = []
     
     print(f"  Found {len(files)} files in SUMMARY.md")
     

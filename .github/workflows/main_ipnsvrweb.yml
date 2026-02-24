@@ -45,7 +45,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Full history needed for change detection
-          # token: ${{ secrets.GITHUB_TOKEN }}  # Uncomment for auto-commit
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # ─── Step 1: Detect Changed Documentation Files ───
       - name: Detect changed files
@@ -63,36 +63,41 @@ jobs:
             echo "ℹ️ No documentation files changed"
           fi
 
-      # ─── Step 2: Setup Python ───
-      - name: Setup Python
+      # ─── Step 2: Setup Node.js and Update Docs ───
+      - name: Setup Node.js
         if: steps.detect.outputs.docs_changed == 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-node@v3
         with:
-          python-version: '3.11'
+          node-version: '22.x'
 
-      # ─── Step 3: Run Documentation Update ───
+      - name: Install dependencies
+        if: steps.detect.outputs.docs_changed == 'true'
+        run: npm install
+
       - name: Update documentation
         if: steps.detect.outputs.docs_changed == 'true'
         run: |
-          echo "🔄 Running ci_update_docs.py..."
-          python scripts/ci_update_docs.py
+          echo "🔄 Generating documentation..."
+          npm run generate-docs
+          echo "✅ Documentation generated"
 
       # ═════════════════════════════════════════════════════════════════════════
-      # OPTION A: Auto-Commit Changes (uncomment below for auto-commit)
+      # Auto-Commit regenerated documentation
       # ═════════════════════════════════════════════════════════════════════════
-      # 
-      # - name: Commit and push changes
-      #   if: steps.detect.outputs.docs_changed == 'true'
-      #   run: |
-      #     git config user.name "github-actions[bot]"
-      #     git config user.email "github-actions[bot]@users.noreply.github.com"
-      #     
-      #     if [ -n "$(git status --porcelain)" ]; then
-      #       git add src/data/documentation.json public/data/documentation.json
-      #       git commit -m "🤖 Auto-regenerate documentation [skip ci]"
-      #       git push
-      #       echo "✅ Changes committed and pushed"
-      #     fi
+      - name: Commit and push changes
+        if: steps.detect.outputs.docs_changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [ -n "$(git status --porcelain)" ]; then
+            git add src/data/documentation.json public/data/documentation.json
+            git commit -m "🤖 Auto-regenerate documentation [skip ci]"
+            git push
+            echo "✅ Changes committed and pushed"
+          else
+            echo "ℹ️ No changes to commit"
+          fi
       # 
       # ═════════════════════════════════════════════════════════════════════════
 
