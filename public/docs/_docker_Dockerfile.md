@@ -1,4 +1,4 @@
-ï»¿# Dockerfile
+Ã¯Â»Â¿# Dockerfile
 
 **Path**: `.docker\Dockerfile`
 
