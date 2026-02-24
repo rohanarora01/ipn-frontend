@@ -1,0 +1,90 @@
+# Restore Original Documentation
+# When you push a .md file change, this reverts it back to the original version
+# from the previous commit (before your edits)
+
+name: Restore Original Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'public/docs/**.md'
+
+permissions:
+  contents: write
+
+jobs:
+  restore-original:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 2  # Need previous commit to get original
+      
+      - name: Detect and restore changed files to original
+        run: |
+          echo "═══════════════════════════════════════════════════════════"
+          echo "  🔄 RESTORING ORIGINAL DOCUMENTATION"
+          echo "═══════════════════════════════════════════════════════════"
+          
+          # Get the list of changed .md files in the last commit
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^public/docs/.*\.md$' || true)
+          
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "ℹ️ No documentation files changed"
+            exit 0
+          fi
+          
+          echo ""
+          echo "📄 Files that were edited (will be restored to original):"
+          for file in $CHANGED_FILES; do
+            echo "   • $file"
+          done
+          echo ""
+          
+          # Restore each file to its original version (from HEAD~1)
+          for file in $CHANGED_FILES; do
+            echo "═══════════════════════════════════════════════════════════"
+            echo "  📝 Restoring: $file"
+            echo "═══════════════════════════════════════════════════════════"
+            
+            # Check if file existed in previous commit
+            if git show HEAD~1:$file > /dev/null 2>&1; then
+              # File existed - restore original version
+              git show HEAD~1:$file > "$file"
+              echo "  ✅ Restored to original version (from previous commit)"
+            else
+              # File is new - delete it
+              git rm "$file"
+              echo "  🗑️  File was new - removed"
+            fi
+            echo ""
+          done
+          
+          echo "═══════════════════════════════════════════════════════════"
+          echo "  ✅ All files restored to original!"
+          echo "═══════════════════════════════════════════════════════════"
+      
+      - name: Commit restored files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add all changes
+          git add -A
+          
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "📝 Committing restored files..."
+            git commit -m "🤖 Restored original documentation [skip ci]
+
+Reverted edited files back to their original versions.
+Your edits were discarded and original content restored."
+            git push
+            echo "✅ Original files restored and pushed!"
+          else
+            echo "ℹ️ No changes to commit"
+          fi

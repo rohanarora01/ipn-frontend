@@ -1,15 +1,11 @@
-# Save Original Documentation
-# When you push a .md file change, this saves the ORIGINAL version as a backup
-# You get BOTH: your edited version + the original version
-
-name: Save Original Documentation
+﻿name: Save Original Documentation
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'public/docs/**.md'
+      - '"'"'public/docs/**.md'"'"'
 
 permissions:
   contents: write
@@ -19,82 +15,27 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 2  # Need previous commit to get original
+          fetch-depth: 2
       
       - name: Save original versions
         run: |
-          echo "═══════════════════════════════════════════════════════════"
-          echo "  💾 SAVING ORIGINAL DOCUMENTATION"
-          echo "═══════════════════════════════════════════════════════════"
-          
-          # Create folder for originals if not exists
           mkdir -p public/docs/original
+          CHANGED=$(git diff --name-only HEAD~1 HEAD | grep '"'"'^public/docs/.*\.md$'"'"' || true)
           
-          # Get the list of changed .md files in the last commit
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^public/docs/.*\.md$' || true)
-          
-          if [ -z "$CHANGED_FILES" ]; then
-            echo "ℹ️ No documentation files changed"
-            exit 0
-          fi
-          
-          echo ""
-          echo "📄 Files that were edited:"
-          for file in $CHANGED_FILES; do
-            echo "   • $file"
-          done
-          echo ""
-          
-          # Save original version of each file
-          for file in $CHANGED_FILES; do
-            echo "═══════════════════════════════════════════════════════════"
-            echo "  📝 Processing: $file"
-            echo "═══════════════════════════════════════════════════════════"
-            
-            # Get just the filename
+          for file in $CHANGED; do
             filename=$(basename "$file")
-            
-            # Check if file existed in previous commit
             if git show HEAD~1:$file > /dev/null 2>&1; then
-              # File existed - save original version
-              original_path="public/docs/original/${filename}"
-              git show HEAD~1:$file > "$original_path"
-              echo "  ✅ Original saved to: $original_path"
-            else
-              echo "  ⚠️  File is new, no original to save"
+              git show HEAD~1:$file > "public/docs/original/$filename"
+              echo "Saved original: $filename"
             fi
-            echo ""
           done
-          
-          echo "═══════════════════════════════════════════════════════════"
-          echo "  ✅ Original versions saved!"
-          echo ""
-          echo "  📁 Location: public/docs/original/"
-          echo "═══════════════════════════════════════════════════════════"
       
-      - name: Commit original files
+      - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Add all original files
           git add public/docs/original/
-          
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "📝 Committing original files..."
-            git commit -m "🤖 Saved original documentation versions [skip ci]
-
-Saved original versions of edited files to public/docs/original/
-
-You now have:
-  - public/docs/<file>.md          ← Your edited version
-  - public/docs/original/<file>.md ← Original version (backup)"
-            git push
-            echo "✅ Original files saved and pushed!"
-          else
-            echo "ℹ️ No changes to commit"
-          fi
+          git diff --staged --quiet || (git commit -m "Save original docs [skip ci]" && git push)
