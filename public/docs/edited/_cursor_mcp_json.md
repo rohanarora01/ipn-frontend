@@ -2,5 +2,6 @@
 
 **Path**: `.cursor\mcp.json`
 
-
+## Summary
+This is a configuration file for MCP (Model Context Protocol) servers, which defines server connections that can be used for AI/LLM integrations. The file currently contains an empty `mcpServers` object, indicating no MCP servers are configured yet. 
 

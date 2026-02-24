@@ -1,5 +1,0 @@
-# Dockerfile
-
-**Path**: `.docker\Dockerfile`
-
-
